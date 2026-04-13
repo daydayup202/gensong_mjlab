@@ -21,7 +21,9 @@ from mjlab.asset_zoo.robots.gensong_gs.gensong_constants import (
 )
 from mjlab.entity import Entity
 from mjlab.envs import ManagerBasedRlEnv
+from mjlab.envs import mdp as envs_mdp
 from mjlab.envs.mdp.actions import JointPositionActionCfg, JointVelocityActionCfg
+from mjlab.managers.event_manager import EventTermCfg
 from mjlab.tasks.gensong_easywheel.mdp import WheelModeCommandCfg
 from mjlab.tasks.registry import load_env_cfg
 
@@ -92,6 +94,16 @@ def test_gensong_easywheel_play_overrides() -> None:
   assert cfg.episode_length_s >= 1e9
   assert not cfg.observations["actor"].enable_corruption
   assert "push_robot" not in cfg.events
+
+
+def test_gensong_easywheel_push_event_config() -> None:
+  cfg = load_env_cfg(TASK_ID)
+  push_cfg = cfg.events["push_robot"]
+  assert isinstance(push_cfg, EventTermCfg)
+  assert push_cfg.mode == "interval"
+  assert push_cfg.interval_range_s == (0.0, 0.0)
+  assert push_cfg.func == envs_mdp.apply_external_force_torque_stochastic
+  assert push_cfg.params["probability"] == 0.002
 
 
 def test_gensong_easywheel_switch_config() -> None:

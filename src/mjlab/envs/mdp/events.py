@@ -356,6 +356,71 @@ def apply_external_force_torque(
   )
 
 
+def apply_external_force_torque_stochastic(
+  env: ManagerBasedRlEnv,
+  env_ids: torch.Tensor | None,
+  force_range: dict[str, tuple[float, float]],
+  torque_range: dict[str, tuple[float, float]],
+  probability: float,
+  asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> None:
+  """Apply random external wrench with Bernoulli triggering per environment.
+
+  The wrench is sampled per-axis from the provided ranges. Environments that do
+  not trigger receive zero wrench so previous external forces are cleared.
+  """
+  if not 0.0 <= probability <= 1.0:
+    raise ValueError(f"probability must be in [0.0, 1.0], got {probability}.")
+
+  if env_ids is None:
+    env_ids = torch.arange(env.num_envs, device=env.device, dtype=torch.int)
+  if len(env_ids) == 0:
+    return
+
+  asset: Entity = env.scene[asset_cfg.name]
+  num_bodies = (
+    len(asset_cfg.body_ids)
+    if isinstance(asset_cfg.body_ids, list)
+    else asset.num_bodies
+  )
+  size = (len(env_ids), num_bodies, 3)
+  forces = torch.zeros(size, device=env.device)
+  torques = torch.zeros(size, device=env.device)
+
+  trigger_mask = torch.rand(len(env_ids), device=env.device) < probability
+  if trigger_mask.any():
+    num_triggered = int(trigger_mask.sum().item())
+
+    force_ranges = torch.tensor(
+      [force_range.get(axis, (0.0, 0.0)) for axis in ("x", "y", "z")],
+      device=env.device,
+    )
+    sampled_forces = sample_uniform(
+      force_ranges[:, 0],
+      force_ranges[:, 1],
+      (num_triggered, num_bodies, 3),
+      device=env.device,
+    )
+
+    torque_ranges = torch.tensor(
+      [torque_range.get(axis, (0.0, 0.0)) for axis in ("x", "y", "z")],
+      device=env.device,
+    )
+    sampled_torques = sample_uniform(
+      torque_ranges[:, 0],
+      torque_ranges[:, 1],
+      (num_triggered, num_bodies, 3),
+      device=env.device,
+    )
+
+    forces[trigger_mask] = sampled_forces
+    torques[trigger_mask] = sampled_torques
+
+  asset.write_external_wrench_to_sim(
+    forces, torques, env_ids=env_ids, body_ids=asset_cfg.body_ids
+  )
+
+
 class apply_body_impulse:
   """Apply random impulses to bodies for a sampled duration.
 

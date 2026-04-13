@@ -227,7 +227,25 @@ def _base_env_cfg() -> ManagerBasedRlEnvCfg:
         "operation": "scale",
       },
     ),
-    "push_robot": None,
+    "push_robot": EventTermCfg(
+      func=envs_mdp.apply_external_force_torque_stochastic,
+      mode="interval",
+      interval_range_s=(0.0, 0.0),
+      params={
+        "asset_cfg": SceneEntityCfg("robot", body_names="body"),
+        "force_range": {
+          "x": (-500.0, 500.0),
+          "y": (-500.0, 500.0),
+          "z": (-0.0, 0.0),
+        },
+        "torque_range": {
+          "x": (-50.0, 50.0),
+          "y": (-50.0, 50.0),
+          "z": (-0.0, 0.0),
+        },
+        "probability": 0.002,
+      },
+    ),
   }
 
   rewards = {
