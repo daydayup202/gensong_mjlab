@@ -8,6 +8,7 @@ from mjlab.tasks.registry import list_tasks, load_env_cfg
 
 _TRAINING_CORRUPTION_DISABLED_TASKS = {
   "Mjlab-Gensong-EasyWheel-Flat",
+  "Mjlab-Gensong-EasyWheel-Flat-Switch-2W",
 }
 
 

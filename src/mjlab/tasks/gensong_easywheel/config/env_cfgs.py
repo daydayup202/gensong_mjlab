@@ -34,6 +34,8 @@ from mjlab.tasks.gensong_easywheel import mdp
 from mjlab.terrains import TerrainEntityCfg
 from mjlab.viewer import ViewerConfig
 
+_FRONT_WHEEL_BODIES = ("left_wheel_2", "right_wheel_2")
+
 
 def _base_env_cfg() -> ManagerBasedRlEnvCfg:
   contact_sensor = ContactSensorCfg(
@@ -382,11 +384,68 @@ def gensong_easywheel_flat_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
   cfg = _base_env_cfg()
 
   if play:
-    cfg.scene.num_envs = 32
-    cfg.episode_length_s = int(1e9)
-    cfg.observations["actor"].enable_corruption = False
-    cfg.observations["obsHistory"].enable_corruption = False
-    cfg.events.pop("push_robot", None)
-    cfg.curriculum = {}
+    cfg = _apply_play_overrides(cfg)
 
+  return cfg
+
+
+def gensong_easywheel_flat_switch_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
+  cfg = _base_env_cfg()
+
+  cfg.commands["wheel_mode"] = mdp.WheelModeCommandCfg(
+    resampling_time_range=(2.0, 5.0),
+    debug_vis=False,
+    two_wheel_probability=0.5,
+    initial_mode=0.0,
+  )
+
+  cfg.observations["commands"].terms["wheel_mode"] = ObservationTermCfg(
+    func=envs_mdp.generated_commands,
+    params={"command_name": "wheel_mode"},
+  )
+
+  cfg.rewards["rew_front_wheel_contact_4w"] = RewardTermCfg(
+    func=mdp.front_wheel_contact_stability,
+    weight=1.0,
+    params={
+      "sensor_name": "contact_forces",
+      "body_patterns": _FRONT_WHEEL_BODIES,
+      "force_threshold": 1.0,
+      "command_name": "wheel_mode",
+    },
+  )
+  cfg.rewards["rew_front_wheel_lift_2w"] = RewardTermCfg(
+    func=mdp.front_wheel_lift_height,
+    weight=2.0,
+    params={
+      "body_cfg": SceneEntityCfg("robot", body_names=_FRONT_WHEEL_BODIES),
+      "min_height": 0.08,
+      "command_name": "wheel_mode",
+    },
+  )
+
+  cfg.terminations["front_wheel_touchdown_in_two_wheel_mode"] = TerminationTermCfg(
+    func=mdp.front_wheel_touchdown_in_two_wheel_mode,
+    params={
+      "sensor_name": "contact_forces",
+      "body_patterns": _FRONT_WHEEL_BODIES,
+      "force_threshold": 1.0,
+      "command_name": "wheel_mode",
+      "mode_threshold": 0.5,
+    },
+  )
+
+  if play:
+    cfg = _apply_play_overrides(cfg)
+
+  return cfg
+
+
+def _apply_play_overrides(cfg: ManagerBasedRlEnvCfg) -> ManagerBasedRlEnvCfg:
+  cfg.scene.num_envs = 32
+  cfg.episode_length_s = int(1e9)
+  cfg.observations["actor"].enable_corruption = False
+  cfg.observations["obsHistory"].enable_corruption = False
+  cfg.events.pop("push_robot", None)
+  cfg.curriculum = {}
   return cfg

@@ -49,6 +49,15 @@ def _body_positions_in_base_frame(asset: Entity, body_ids) -> torch.Tensor:
   return quat_apply_inverse(base_quat, body_pos_w - base_pos)
 
 
+def _two_wheel_mode_mask(
+  env: ManagerBasedRlEnv,
+  command_name: str = "wheel_mode",
+  threshold: float = 0.5,
+) -> torch.Tensor:
+  command = env.command_manager.get_command(command_name)
+  return (command[:, 0] > threshold).float()
+
+
 def track_lin_vel_xy_exp(
   env: ManagerBasedRlEnv,
   command_name: str,
@@ -207,6 +216,37 @@ def base_com_height(
 ) -> torch.Tensor:
   asset: Entity = env.scene[asset_cfg.name]
   return torch.abs(asset.data.root_link_pos_w[:, 2] - target_height)
+
+
+def front_wheel_contact_stability(
+  env: ManagerBasedRlEnv,
+  sensor_name: str,
+  body_patterns: str | tuple[str, ...],
+  force_threshold: float = 1.0,
+  command_name: str = "wheel_mode",
+) -> torch.Tensor:
+  sensor: ContactSensor = env.scene[sensor_name]
+  selected = _contact_body_indices(sensor, body_patterns)
+  if not selected:
+    return torch.zeros(env.num_envs, device=env.device)
+
+  force = sensor.data.force
+  assert force is not None
+  in_contact = torch.norm(force[:, selected], dim=-1) > force_threshold
+  four_wheel_mask = 1.0 - _two_wheel_mode_mask(env, command_name=command_name)
+  return in_contact.float().mean(dim=1) * four_wheel_mask
+
+
+def front_wheel_lift_height(
+  env: ManagerBasedRlEnv,
+  body_cfg: SceneEntityCfg,
+  min_height: float = 0.08,
+  command_name: str = "wheel_mode",
+) -> torch.Tensor:
+  asset: Entity = env.scene[body_cfg.name]
+  front_wheel_height = asset.data.body_link_pos_w[:, body_cfg.body_ids, 2].min(dim=1).values
+  two_wheel_mask = _two_wheel_mode_mask(env, command_name=command_name)
+  return torch.clamp(front_wheel_height - min_height, min=0.0) * two_wheel_mask
 
 
 def undesired_contacts(

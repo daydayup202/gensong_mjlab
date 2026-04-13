@@ -22,9 +22,11 @@ from mjlab.asset_zoo.robots.gensong_gs.gensong_constants import (
 from mjlab.entity import Entity
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.envs.mdp.actions import JointPositionActionCfg, JointVelocityActionCfg
+from mjlab.tasks.gensong_easywheel.mdp import WheelModeCommandCfg
 from mjlab.tasks.registry import load_env_cfg
 
 TASK_ID = "Mjlab-Gensong-EasyWheel-Flat"
+SWITCH_TASK_ID = "Mjlab-Gensong-EasyWheel-Flat-Switch-2W"
 
 
 def test_gensong_robot_compiles() -> None:
@@ -92,10 +94,43 @@ def test_gensong_easywheel_play_overrides() -> None:
   assert "push_robot" not in cfg.events
 
 
+def test_gensong_easywheel_switch_config() -> None:
+  cfg = load_env_cfg(SWITCH_TASK_ID)
+  assert "joint_pos" in cfg.actions
+  assert "joint_vel" in cfg.actions
+
+  joint_pos = cfg.actions["joint_pos"]
+  joint_vel = cfg.actions["joint_vel"]
+  assert isinstance(joint_pos, JointPositionActionCfg)
+  assert isinstance(joint_vel, JointVelocityActionCfg)
+  assert tuple(joint_pos.actuator_names) == GENSONG_LEG_JOINTS
+  assert tuple(joint_vel.actuator_names) == GENSONG_WHEEL_1_JOINTS
+
+  assert "base_velocity" in cfg.commands
+  assert "wheel_mode" in cfg.commands
+  wheel_mode = cfg.commands["wheel_mode"]
+  assert isinstance(wheel_mode, WheelModeCommandCfg)
+  assert wheel_mode.resampling_time_range == (2.0, 5.0)
+  assert wheel_mode.two_wheel_probability == 0.5
+
+  assert "wheel_mode" in cfg.observations["commands"].terms
+  assert "rew_front_wheel_contact_4w" in cfg.rewards
+  assert "rew_front_wheel_lift_2w" in cfg.rewards
+  assert "front_wheel_touchdown_in_two_wheel_mode" in cfg.terminations
+
+
+def test_gensong_easywheel_switch_play_overrides() -> None:
+  cfg = load_env_cfg(SWITCH_TASK_ID, play=True)
+  assert cfg.episode_length_s >= 1e9
+  assert not cfg.observations["actor"].enable_corruption
+  assert "push_robot" not in cfg.events
+
+
 @pytest.mark.slow
-def test_gensong_easywheel_env_smoke() -> None:
+@pytest.mark.parametrize("task_id", [TASK_ID, SWITCH_TASK_ID])
+def test_gensong_easywheel_env_smoke(task_id: str) -> None:
   device = get_test_device()
-  cfg = load_env_cfg(TASK_ID)
+  cfg = load_env_cfg(task_id)
   cfg.scene.num_envs = 1
 
   with warnings.catch_warnings():

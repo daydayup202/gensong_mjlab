@@ -52,3 +52,32 @@ def illegal_contact(
   assert force is not None
   magnitude = torch.norm(force[:, selected], dim=-1)
   return (magnitude > force_threshold).any(dim=-1)
+
+
+def front_wheel_touchdown_in_two_wheel_mode(
+  env: ManagerBasedRlEnv,
+  sensor_name: str,
+  body_patterns: str | tuple[str, ...],
+  force_threshold: float = 1.0,
+  command_name: str = "wheel_mode",
+  mode_threshold: float = 0.5,
+) -> torch.Tensor:
+  sensor: ContactSensor = env.scene[sensor_name]
+  selected = _contact_body_indices(sensor, body_patterns)
+  if not selected:
+    return torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
+
+  command = env.command_manager.get_command(command_name)
+  two_wheel_mode = command[:, 0] > mode_threshold
+
+  data = sensor.data
+  if data.force_history is not None:
+    magnitude = torch.norm(data.force_history[:, selected], dim=-1)
+    touched = (magnitude > force_threshold).any(dim=-1).any(dim=-1)
+  else:
+    force = data.force
+    assert force is not None
+    magnitude = torch.norm(force[:, selected], dim=-1)
+    touched = (magnitude > force_threshold).any(dim=-1)
+
+  return touched & two_wheel_mode
