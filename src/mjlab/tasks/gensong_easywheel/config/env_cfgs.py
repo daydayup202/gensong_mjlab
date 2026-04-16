@@ -261,6 +261,18 @@ def _base_env_cfg() -> ManagerBasedRlEnvCfg:
       weight=8.0,
       params={"command_name": "base_velocity", "std": 0.25},
     ),
+    "rew_wheel_speed_tracking": RewardTermCfg(
+      func=mdp.wheel_speed_tracking,
+      weight=4.0,
+      params={
+        "command_name": "base_velocity",
+        "asset_cfg": SceneEntityCfg("robot", joint_names=GENSONG_WHEEL_1_JOINTS),
+        "wheel_radius": 0.108,
+        "track_width": 0.345,
+        "std": 1.0,
+        "min_cmd": 0.05,
+      },
+    ),
     "rew_leg_symmetry": RewardTermCfg(
       func=mdp.leg_symmetry,
       weight=1.0,

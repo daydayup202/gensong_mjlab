@@ -63,6 +63,7 @@ def test_gensong_easywheel_reward_and_event_names() -> None:
     "stand_still",
     "rew_lin_vel_xy",
     "rew_ang_vel_z",
+    "rew_wheel_speed_tracking",
     "rew_same_foot_x_position",
     "pen_action_rate",
     "pen_action_smoothness",
