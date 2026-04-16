@@ -30,7 +30,7 @@ def gensong_easywheel_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
       clip_param=0.2,
       entropy_coef=0.003,
       num_learning_epochs=5,
-      num_mini_batches=8,
+      num_mini_batches=4,
       learning_rate=1.0e-4,
       schedule="fixed",
       gamma=0.99,
@@ -40,7 +40,7 @@ def gensong_easywheel_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
     ),
     experiment_name="wf_gensong_easy_wheel_only",
     save_interval=100,
-    num_steps_per_env=48,
+    num_steps_per_env=24,
     max_iterations=10_000,
     obs_groups={
       "actor": ("actor", "obsHistory", "commands"),
