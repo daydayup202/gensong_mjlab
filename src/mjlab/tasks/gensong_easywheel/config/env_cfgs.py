@@ -156,8 +156,8 @@ def _base_env_cfg() -> ManagerBasedRlEnvCfg:
       func=dr.geom_friction,
       mode="startup",
       params={
-        "asset_cfg": SceneEntityCfg("robot", geom_names=(r"^(?!.*wheel).*_collision$",)),
-        "ranges": (0.4, 1.2),
+        "asset_cfg": SceneEntityCfg("robot", geom_names=(r".*_leg_.*_collision",)),
+        "ranges": (0.6, 0.6),
         "operation": "abs",
         "shared_random": True,
       },
@@ -167,7 +167,7 @@ def _base_env_cfg() -> ManagerBasedRlEnvCfg:
       mode="startup",
       params={
         "asset_cfg": SceneEntityCfg("robot", geom_names=(r".*_wheel_2_collision",)),
-        "ranges": (0.0, 0.0),
+        "ranges": (0.01, 0.01),
         "operation": "abs",
         "shared_random": True,
       },
@@ -260,18 +260,6 @@ def _base_env_cfg() -> ManagerBasedRlEnvCfg:
       func=mdp.track_ang_vel_z_exp,
       weight=8.0,
       params={"command_name": "base_velocity", "std": 0.25},
-    ),
-    "rew_wheel_speed_tracking": RewardTermCfg(
-      func=mdp.wheel_speed_tracking,
-      weight=4.0,
-      params={
-        "command_name": "base_velocity",
-        "asset_cfg": SceneEntityCfg("robot", joint_names=GENSONG_WHEEL_1_JOINTS),
-        "wheel_radius": 0.108,
-        "track_width": 0.345,
-        "std": 1.0,
-        "min_cmd": 0.05,
-      },
     ),
     "rew_leg_symmetry": RewardTermCfg(
       func=mdp.leg_symmetry,

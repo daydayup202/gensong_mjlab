@@ -12,15 +12,15 @@ set -euo pipefail
 
 TASK_ID="${TASK_ID:-Mjlab-Gensong-EasyWheel-Flat}"
 VIEWER="${VIEWER:-native}"
-NUM_ENVS="${NUM_ENVS:-32}"
+NUM_ENVS="${NUM_ENVS:-1}"
 DEVICE="${DEVICE:-cuda:0}"
 PRINT_VEL_INTERVAL="${PRINT_VEL_INTERVAL:-50}"
 
 # Default velocity command.
 # Edit these three values directly when you want a different speed command.
-CMD_VX="0.35"
+CMD_VX="0.00"
 CMD_VY="0.00"
-CMD_WZ="0.00"
+CMD_WZ="0.50"
 
 CHECKPOINT_FILE="${CHECKPOINT_FILE:-}"
 
@@ -60,7 +60,7 @@ uv run play "$TASK_ID" \
   --cmd-vx "$CMD_VX" \
   --cmd-vy "$CMD_VY" \
   --cmd-wz "$CMD_WZ" \
-  --print-actual-vel \
+  --print-actual-vel True\
   --print-vel-interval "$PRINT_VEL_INTERVAL"
 
 echo

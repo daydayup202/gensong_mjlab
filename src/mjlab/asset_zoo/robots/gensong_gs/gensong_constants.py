@@ -13,6 +13,7 @@ from mjlab.actuator import (
   BuiltinVelocityActuatorCfg,
 )
 from mjlab.entity import EntityArticulationInfoCfg, EntityCfg
+from mjlab.utils.spec_config import CollisionCfg
 
 GENSONG_GS_XML: Path = (
   MJLAB_SRC_PATH / "asset_zoo" / "robots" / "gensong_gs" / "xmls" / "gs.xml"
@@ -216,6 +217,30 @@ GENSONG_GS_INIT_STATE = EntityCfg.InitialStateCfg(
   joint_vel={".*": 0.0},
 )
 
+LEG_GEOM_RE = r".*_leg_.*_collision"
+WHEEL_GEOM_RE = r".*_wheel_1_collision"
+WHEEL_GEOM_RE_2 = r".*_wheel_2_collision"
+
+FULL_COLLISION = CollisionCfg(
+  geom_names_expr=(".*_collision",),
+  condim={
+    LEG_GEOM_RE: 3,
+    WHEEL_GEOM_RE: 6,
+    WHEEL_GEOM_RE_2: 3,
+    ".*_collision": 3,
+  },
+  priority={
+    LEG_GEOM_RE: 1,
+    WHEEL_GEOM_RE: 3,
+    WHEEL_GEOM_RE_2: 2,
+  },
+  friction={
+    LEG_GEOM_RE: (0.6, 0.01, 0.0001),
+    WHEEL_GEOM_RE: (1.0, 0.02, 0.0002),
+    WHEEL_GEOM_RE_2: (0.01, 0.005, 0.00005),
+  },
+)
+
 
 def get_gensong_gs_robot_cfg() -> EntityCfg:
   return EntityCfg(
@@ -227,6 +252,7 @@ def get_gensong_gs_robot_cfg() -> EntityCfg:
       joint_pos=DEFAULT_Q_4W.copy(),
       joint_vel={".*": 0.0},
     ),
+    collisions=(FULL_COLLISION,),
     spec_fn=get_spec,
     articulation=GENSONG_GS_ARTICULATION,
   )

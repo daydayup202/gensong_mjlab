@@ -17,7 +17,6 @@ if TYPE_CHECKING:
   from mjlab.managers.reward_manager import RewardTermCfg
 
 _DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
-_DEFAULT_WHEEL_ASSET_CFG = SceneEntityCfg("robot", joint_names=".*wheel_joint.*")
 
 
 def _as_patterns(body_patterns: str | tuple[str, ...]) -> tuple[str, ...]:
@@ -84,62 +83,6 @@ def track_ang_vel_z_exp(
   command = env.command_manager.get_command(command_name)
   error = torch.square(command[:, 2] - asset.data.root_link_ang_vel_b[:, 2])
   return torch.exp(-error / max(std, 1.0e-6) ** 2)
-
-
-def wheel_speed_tracking(
-  env: ManagerBasedRlEnv,
-  command_name: str = "twist",
-  asset_cfg: SceneEntityCfg = _DEFAULT_WHEEL_ASSET_CFG,
-  wheel_radius: float = 0.108,
-  track_width: float = 0.345,
-  std: float = 1.0,
-  min_cmd: float = 0.05,
-) -> torch.Tensor:
-  """Differential-drive wheel-speed tracking reward."""
-  asset: Entity = env.scene[asset_cfg.name]
-  command = env.command_manager.get_command(command_name)
-  assert command is not None, f"Command '{command_name}' not found."
-
-  joint_ids = asset_cfg.joint_ids
-  joint_names = [asset.joint_names[idx] for idx in joint_ids]
-
-  left_local_ids = [
-    idx for idx, joint_name in enumerate(joint_names) if "left" in joint_name.lower()
-  ]
-  right_local_ids = [
-    idx for idx, joint_name in enumerate(joint_names) if "right" in joint_name.lower()
-  ]
-  if not left_local_ids or not right_local_ids:
-    raise ValueError(
-      "wheel_speed_tracking requires at least one 'left' and one 'right' wheel joint "
-      f"from asset_cfg, got joints={joint_names}."
-    )
-  left_id = left_local_ids[0]
-  right_id = right_local_ids[0]
-
-  vx = command[:, 0]
-  wz = command[:, 2]
-
-  v_left = vx - 0.5 * wz * track_width
-  v_right = vx + 0.5 * wz * track_width
-  w_left_ref = v_left / wheel_radius
-  w_right_ref = v_right / wheel_radius
-
-  wheel_vel = asset.data.joint_vel[:, joint_ids]
-  w_left = wheel_vel[:, left_id]
-  w_right = -wheel_vel[:, right_id]
-
-  scale = torch.abs(w_left_ref) + torch.abs(w_right_ref) + 1.0
-  err = (
-    torch.square(w_left - w_left_ref) + torch.square(w_right - w_right_ref)
-  ) / torch.square(scale)
-
-  denom = 2.0 * max(std, 1.0e-6) ** 2
-  reward = torch.exp(-err / denom)
-
-  cmd_mag = torch.abs(vx) + torch.abs(wz)
-  reward = torch.where(cmd_mag > min_cmd, reward, torch.ones_like(reward))
-  return reward
 
 
 def lin_vel_z_l2(

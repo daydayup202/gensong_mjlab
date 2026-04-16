@@ -15,9 +15,13 @@ from mjlab.asset_zoo.robots import (
   get_gensong_gs_robot_cfg,
 )
 from mjlab.asset_zoo.robots.gensong_gs.gensong_constants import (
+  FULL_COLLISION,
   GENSONG_LEG_JOINTS,
   GENSONG_WHEEL_1_JOINTS,
   GENSONG_WHEEL_2_JOINTS,
+  LEG_GEOM_RE,
+  WHEEL_GEOM_RE,
+  WHEEL_GEOM_RE_2,
 )
 from mjlab.entity import Entity
 from mjlab.envs import ManagerBasedRlEnv
@@ -63,7 +67,6 @@ def test_gensong_easywheel_reward_and_event_names() -> None:
     "stand_still",
     "rew_lin_vel_xy",
     "rew_ang_vel_z",
-    "rew_wheel_speed_tracking",
     "rew_same_foot_x_position",
     "pen_action_rate",
     "pen_action_smoothness",
@@ -105,6 +108,28 @@ def test_gensong_easywheel_push_event_config() -> None:
   assert push_cfg.interval_range_s == (0.0, 0.0)
   assert push_cfg.func == envs_mdp.apply_external_force_torque_stochastic
   assert push_cfg.params["probability"] == 0.002
+
+
+def test_gensong_full_collision_cfg() -> None:
+  cfg = get_gensong_gs_robot_cfg()
+  assert cfg.collisions == (FULL_COLLISION,)
+  assert FULL_COLLISION.geom_names_expr == (".*_collision",)
+  assert FULL_COLLISION.condim == {
+    LEG_GEOM_RE: 3,
+    WHEEL_GEOM_RE: 6,
+    WHEEL_GEOM_RE_2: 3,
+    ".*_collision": 3,
+  }
+  assert FULL_COLLISION.priority == {
+    LEG_GEOM_RE: 1,
+    WHEEL_GEOM_RE: 3,
+    WHEEL_GEOM_RE_2: 2,
+  }
+  assert FULL_COLLISION.friction == {
+    LEG_GEOM_RE: (0.6, 0.01, 0.0001),
+    WHEEL_GEOM_RE: (1.0, 0.02, 0.0002),
+    WHEEL_GEOM_RE_2: (0.01, 0.005, 0.00005),
+  }
 
 
 def test_gensong_easywheel_switch_config() -> None:
